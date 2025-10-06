@@ -6,7 +6,7 @@ import express from "express";
 import {
   asignarUsuarioABrigada,
   listarIntegrantesDeBrigada,
-  removerUsuarioDeBrigada,
+  eliminarUsuarioDeBrigada,
 } from "../controllers/usuarioBrigadaController.js";
 import { verificarToken } from "../middleware/auth.js";
 
@@ -14,8 +14,13 @@ const router = express.Router();
 
 router.use(verificarToken);
 
-router.post("/", asignarUsuarioABrigada); // CU4
-router.get("/:id_brigada", listarIntegrantesDeBrigada); // CU5
-router.delete("/:id_brigada/:id_usuario", removerUsuarioDeBrigada); // CU6
+// CU4 - Asignar usuario a brigada
+router.post("/", asignarUsuarioABrigada);
+
+// CU5 - Listar usuarios de una brigada
+router.get("/:id_brigada", listarIntegrantesDeBrigada);
+
+// CU6 - Eliminar usuario de brigada
+router.delete("/:id_brigada/:id_usuario", eliminarUsuarioDeBrigada);
 
 export default router;
