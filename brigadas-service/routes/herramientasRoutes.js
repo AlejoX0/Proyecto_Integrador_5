@@ -3,16 +3,17 @@
 // Protegidas por autenticación JWT
 // ============================================
 
-import express from "express";
-import {
+const express = require("express");
+const router = express.Router();
+
+const {
   crearHerramienta,
   listarHerramientas,
   registrarUso,
   obtenerUso,
-} from "../controllers/herramientasController.js";
-import { verificarToken } from "../middleware/auth.js";
+} = require("../controllers/herramientasController");
 
-const router = express.Router();
+const { verificarToken } = require("../middleware/authMiddleware");
 
 // 🔐 Middleware de autenticación
 router.use(verificarToken);
@@ -29,4 +30,4 @@ router.post("/uso", registrarUso);
 // CU9 - Consultar uso de herramientas por brigada
 router.get("/uso/:id_brigada", obtenerUso);
 
-export default router;
+module.exports = router;

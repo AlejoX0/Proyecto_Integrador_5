@@ -2,11 +2,9 @@
 // CONEXIÓN A POSTGRESQL (NEON DATABASE)
 // ====================================================
 
-import pg from "pg";
-import dotenv from "dotenv";
+const { Pool } = require("pg");
+const dotenv = require("dotenv");
 dotenv.config();
-
-const { Pool } = pg;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -21,4 +19,4 @@ pool.on("error", (err) => {
   console.error("❌ Error en la conexión a PostgreSQL:", err.message);
 });
 
-export default pool;
+module.exports = pool;

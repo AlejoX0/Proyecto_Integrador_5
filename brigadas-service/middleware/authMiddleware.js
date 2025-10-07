@@ -1,15 +1,13 @@
 // ====================================================
 // MIDDLEWARE DE AUTENTICACIÓN Y AUTORIZACIÓN
 // ====================================================
-// Protege rutas según el rol del usuario.
-// Roles posibles: administrador, jefe, auxiliar, botanico
 
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
 dotenv.config();
 
 // ✅ Verificar token JWT
-export function verificarToken(req, res, next) {
+function verificarToken(req, res, next) {
   const token = req.headers["authorization"];
   if (!token) return res.status(403).json({ error: "Token requerido" });
 
@@ -23,7 +21,7 @@ export function verificarToken(req, res, next) {
 }
 
 // ✅ Verificar rol del usuario
-export function verificarRol(rolesPermitidos = []) {
+function verificarRol(rolesPermitidos = []) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: "No autenticado" });
 
@@ -34,3 +32,5 @@ export function verificarRol(rolesPermitidos = []) {
     next();
   };
 }
+
+module.exports = { verificarToken, verificarRol };

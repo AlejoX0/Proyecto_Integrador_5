@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Microservicio de Brigadas y Herramientas - IFN 2025",
   "main": "server.js",
-  "type": "module",
   "scripts": {
     "start": "node server.js"
   },

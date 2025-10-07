@@ -2,16 +2,18 @@
 // RUTAS: Relación Usuario-Brigada
 // ============================================
 
-import express from "express";
-import {
+const express = require("express");
+const router = express.Router();
+
+const {
   asignarUsuarioABrigada,
   listarIntegrantesDeBrigada,
   eliminarUsuarioDeBrigada,
-} from "../controllers/usuarioBrigadaController.js";
-import { verificarToken } from "../middleware/auth.js";
+} = require("../controllers/usuarioBrigadaController");
 
-const router = express.Router();
+const { verificarToken } = require("../middleware/authMiddleware");
 
+// 🔐 Middleware de autenticación
 router.use(verificarToken);
 
 // CU4 - Asignar usuario a brigada
@@ -23,4 +25,4 @@ router.get("/:id_brigada", listarIntegrantesDeBrigada);
 // CU6 - Eliminar usuario de brigada
 router.delete("/:id_brigada/:id_usuario", eliminarUsuarioDeBrigada);
 
-export default router;
+module.exports = router;
