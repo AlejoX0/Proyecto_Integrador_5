@@ -6,7 +6,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const pool = require("./db/postgres");
-const authMiddleware = require("./middleware/auth");
+const { verificarToken } = require("./middleware/auth"); // ✅ Importamos solo la función necesaria
 
 // Rutas
 const brigadasRoutes = require("./routes/brigadasRoutes");
@@ -30,12 +30,16 @@ app.get("/", (req, res) => {
   res.send("🚀 API de Brigadas funcionando correctamente");
 });
 
-// Rutas protegidas
-app.use("/api/brigadas", authMiddleware, brigadasRoutes);
-app.use("/api/herramientas", authMiddleware, herramientasRoutes);
-app.use("/api/usuarios-brigadas", authMiddleware, usuarioBrigadaRoutes);
+// ====================================================
+// RUTAS PROTEGIDAS CON JWT
+// ====================================================
+app.use("/api/brigadas", verificarToken, brigadasRoutes);
+app.use("/api/herramientas", verificarToken, herramientasRoutes);
+app.use("/api/usuarios-brigadas", verificarToken, usuarioBrigadaRoutes);
 
-// Puerto
+// ====================================================
+// PUERTO DE ESCUCHA
+// ====================================================
 const PORT = process.env.PORT || 4001;
 app.listen(PORT, () => {
   console.log(`🔥 Servidor corriendo en http://localhost:${PORT}`);

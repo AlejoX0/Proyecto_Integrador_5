@@ -11,7 +11,7 @@ const {
   asignarConglomerado,
 } = require("../controllers/brigadasController");
 
-const { verificarToken } = require("../middleware/authMiddleware");
+const { verificarToken } = require("../middleware/auth");
 
 // 🔐 Middleware de autenticación
 router.use(verificarToken);

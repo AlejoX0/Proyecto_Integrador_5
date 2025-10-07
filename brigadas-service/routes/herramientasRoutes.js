@@ -13,7 +13,7 @@ const {
   obtenerUso,
 } = require("../controllers/herramientasController");
 
-const { verificarToken } = require("../middleware/authMiddleware");
+const { verificarToken } = require("../middleware/auth");
 
 // 🔐 Middleware de autenticación
 router.use(verificarToken);
