@@ -40,11 +40,15 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT b.id_brigada, b.nombre, b.fecha_asignacion,
-           CONCAT(u.nombre, ' ', u.apellido) AS lider_nombre,
-           c.codigo AS conglomerado_codigo
+    SELECT 
+        b.id_brigada, 
+        b.nombre::TEXT,                    -- 👈 convertimos a TEXT
+        b.fecha_asignacion, 
+        CONCAT(u.nombre, ' ', u.apellido)::TEXT AS lider_nombre,  -- 👈 convertimos a TEXT
+        c.codigo::TEXT AS conglomerado_codigo                     -- 👈 convertimos a TEXT
     FROM brigada b
     LEFT JOIN usuario u ON b.lider = u.id_usuario
     LEFT JOIN conglomerado c ON b.id_conglomerado = c.id_conglomerado;
 END;
 $$ LANGUAGE plpgsql;
+
