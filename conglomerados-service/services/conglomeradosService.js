@@ -30,8 +30,8 @@ function generarCodigo(prefix = 'CONG') {
 }
 
 /**
- * Crea conglomerado manual + NO crea subparcelas automáticamente (se puede llamar otra función para generarlas),
- * o si 'autoCreateSubparcelas' true -> también crea las 5 subparcelas IFN (centro + 4 cardinales)
+ * Crea conglomerado manual + si options.autoCreateSubparcelas true -> crea las 5 subparcelas IFN
+ * (cada SPF contendrá las subparcelas anidadas: fustales_grandes, fustales, latizales, brinzales)
  */
 async function crearConglomeradoManual(data, options = { autoCreateSubparcelas: true }) {
   const client = await pool.connect();
@@ -83,42 +83,68 @@ async function crearConglomeradosAutomatico(params = {}) {
 }
 
 /**
- * Interna: crear las 5 subparcelas (IFN): SPF-1 central, SPF-2 N (0deg), SPF-3 S(180), SPF-4 E(90), SPF-5 W(270)
- * Distancia entre centros = 80m; radios anidados: 15,7,3,1.5 (we store main radio 15)
+ * Interna: crear las 5 subparcelas IFN (centro + 4 cardinales)
+ * Distancia entre centros = 80m por defecto; para cada SPF se crean las subparcelas:
+ *  - fustales_grandes (15 m)
+ *  - fustales (7 m)
+ *  - latizales (3 m)
+ *  - brinzales (1.5 m)
+ *
+ * Devuelve array con los registros insertados.
  */
 async function _crearSubparcelasIfn(client, id_conglomerado, centroLat, centroLng, distancia = 80) {
   // radios por categoría (m)
-  const radios = {
-    fustales_grandes: 15,
-    fustales: 7,
-    latizales: 3,
-    brinzales: 1.5
-  };
+  const radios = [
+    { categoria: 'fustales_grandes', radio: 15.0 },
+    { categoria: 'fustales', radio: 7.0 },
+    { categoria: 'latizales', radio: 3.0 },
+    { categoria: 'brinzales', radio: 1.5 }
+  ];
 
+  // SPF list: centro + N,E,S,W
   const spfList = [
     { code: 'SPF-1', lat: centroLat, lng: centroLng },
-    // bearings: North (0), East (90), South (180), West (270)
-    { code: 'SPF-2', ...destinationPoint(centroLat, centroLng, distancia, 0) },
-    { code: 'SPF-3', ...destinationPoint(centroLat, centroLng, distancia, 180) },
-    { code: 'SPF-4', ...destinationPoint(centroLat, centroLng, distancia, 90) },
-    { code: 'SPF-5', ...destinationPoint(centroLat, centroLng, distancia, 270) }
+    { code: 'SPF-2', ...destinationPoint(centroLat, centroLng, distancia, 0) },   // North (0°)
+    { code: 'SPF-3', ...destinationPoint(centroLat, centroLng, distancia, 180) }, // South (180°)
+    { code: 'SPF-4', ...destinationPoint(centroLat, centroLng, distancia, 90) },  // East (90°)
+    { code: 'SPF-5', ...destinationPoint(centroLat, centroLng, distancia, 270) }  // West (270°)
   ];
 
   const inserted = [];
+
+  // Prepared INSERT string: incluimos centro_lat, centro_lon, centro_lng por compatibilidad con tu esquema
+  const insertSubSql = `
+    INSERT INTO subparcela (id_conglomerado, categoria, radio, area, centro_lat, centro_lon, centro_lng)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING *;
+  `;
+
   for (const spf of spfList) {
-    // area for FG (15m)
-    const areaFG = Math.PI * Math.pow(radios.fustales_grandes, 2); // m2
-    const insertSub = `INSERT INTO subparcela (id_conglomerado, categoria, radio, centro_lat, centro_lng, area)
-                       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
-    const vals = [id_conglomerado, 'fustales_grandes', radios.fustales_grandes, spf.lat, spf.lng, areaFG];
-    const { rows } = await client.query(insertSub, vals);
-    inserted.push({ spf: spf.code, row: rows[0] });
+    for (const r of radios) {
+      const area = parseFloat((Math.PI * Math.pow(r.radio, 2)).toFixed(2)); // redondear a 2 decimales
+      const vals = [
+        id_conglomerado,
+        r.categoria,
+        r.radio,
+        area,
+        spf.lat,
+        spf.lng, // centro_lon
+        spf.lng  // centro_lng (duplicado por compatibilidad si tenés ambas columnas)
+      ];
+      const { rows } = await client.query(insertSubSql, vals);
+      inserted.push({
+        spf: spf.code,
+        categoria: r.categoria,
+        record: rows[0]
+      });
+    }
   }
+
   return inserted;
 }
 
 async function listarConglomerados() {
-  const { rows } = await pool.query('SELECT * FROM listar_conglomerados()'); // function SQL provided below
+  const { rows } = await pool.query('SELECT * FROM listar_conglomerados()'); // function SQL en DB
   return rows;
 }
 
