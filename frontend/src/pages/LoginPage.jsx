@@ -3,13 +3,15 @@ import { Link } from "react-router-dom";
 import { MdOutlineEmail } from "react-icons/md";
 import { RiLockPasswordLine } from "react-icons/ri";
 import { FaFacebook, FaApple, FaGoogle } from "react-icons/fa";
-import LoginImage from "../assets/image-login.jpg"; // ✅ Nombre corregido
+
+// ✅ Corrección: nombre de archivo actualizado
+import LoginImage from "../assets/image-login.jpg";
 
 const LoginPage = () => {
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      {/* Columna Izquierda */}
-      <div className="relative hidden lg:flex flex-col items-center justify-center">
+      {/* Columna Izquierda: Imagen y Texto */}
+      <div className="relative hidden lg:flex flex-col items-center justify-center bg-gray-200">
         <img
           src={LoginImage}
           alt="Inventario Forestal"
@@ -22,7 +24,7 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* Columna Derecha */}
+      {/* Columna Derecha: Formulario */}
       <div className="bg-brand-green flex flex-col items-center justify-center p-8">
         <div className="max-w-md w-full">
           <h1 className="text-4xl font-bold text-white mb-4">Iniciar sesión</h1>
@@ -33,21 +35,18 @@ const LoginPage = () => {
             </Link>
           </p>
 
-          <form
-            className="space-y-6"
-            onSubmit={(e) => {
-              e.preventDefault();
-              console.log("Intentando iniciar sesión...");
-            }}
-          >
+          <form className="space-y-6">
+            {/* Email */}
             <div className="relative">
               <MdOutlineEmail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="email"
-                placeholder="Ingrese su correo"
+                placeholder="Ingrese su dirección de correo electrónico"
                 className="w-full bg-gray-800 text-white py-3 pl-10 pr-4 rounded-lg outline-none border border-transparent focus:border-green-500"
               />
             </div>
+
+            {/* Contraseña */}
             <div className="relative">
               <RiLockPasswordLine className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -56,6 +55,7 @@ const LoginPage = () => {
                 className="w-full bg-gray-800 text-white py-3 pl-10 pr-4 rounded-lg outline-none border border-transparent focus:border-green-500"
               />
             </div>
+
             <div className="flex justify-between items-center text-sm text-gray-400">
               <div className="flex items-center">
                 <input type="checkbox" id="remember" className="mr-2" />
@@ -65,6 +65,7 @@ const LoginPage = () => {
                 ¿Has olvidado tu contraseña?
               </a>
             </div>
+
             <button
               type="submit"
               className="w-full bg-white text-brand-green font-bold py-3 rounded-full hover:bg-gray-200 transition-colors"
