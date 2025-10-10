@@ -1,14 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom'; // <-- 1. IMPORTA BrowserRouter
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
-import RegisterPage from './pages/RegisterPage';
+
+// Importa tu página de login
+import LoginPage from './pages/LoginPage';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {/* 2. ENVUELVE tu página con el componente BrowserRouter */}
     <BrowserRouter>
-      <RegisterPage />
+      <Routes>
+        {/* Ruta de prueba para el Login */}
+        <Route path="/login" element={<LoginPage />} />
+      </Routes>
     </BrowserRouter>
   </React.StrictMode>
 );
