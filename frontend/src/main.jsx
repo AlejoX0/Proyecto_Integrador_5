@@ -1,10 +1,13 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// 1. Importa SOLAMENTE tu componente de la página de registro
+import RegisterPage from './pages/RegisterPage';
+
+// 2. Renderiza tu componente directamente
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <RegisterPage /> {/* <-- Aquí le decimos que muestre tu página */}
+  </React.StrictMode>
+);
