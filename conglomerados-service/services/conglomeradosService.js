@@ -1,13 +1,14 @@
-// services/conglomeradosService.js
+
+
 const pool = require('../db/postgres');
 const crypto = require('crypto');
+const { generarCoordenada, departamentos } = require('./geoGeneratorService'); // ✅ Servicio de coordenadas
 
-/**
- * Utils geodésicas (suficientes para distancias cortas)
- * destinationPoint: dado lat, lng, distance(m) y bearing(deg) devuelve {lat,lng}
- */
+// =========================================================
+// 🌍 UTILIDADES GEODÉSICAS
+// =========================================================
 function destinationPoint(lat, lng, distanceMeters, bearingDeg) {
-  const R = 6378137; // m (WGS84)
+  const R = 6378137; // Radio de la Tierra (m)
   const δ = distanceMeters / R;
   const θ = (bearingDeg * Math.PI) / 180;
   const φ1 = (lat * Math.PI) / 180;
@@ -21,79 +22,96 @@ function destinationPoint(lat, lng, distanceMeters, bearingDeg) {
       Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2)
     );
 
-  return { lat: (φ2 * 180) / Math.PI, lng: ((λ2 * 180) / Math.PI + 540) % 360 - 180 };
+  return {
+    lat: (φ2 * 180) / Math.PI,
+    lng: ((λ2 * 180) / Math.PI + 540) % 360 - 180
+  };
 }
 
+// =========================================================
+// 🔑 GENERADOR DE CÓDIGOS
+// =========================================================
 function generarCodigo(prefix = 'CONG') {
   const rnd = crypto.randomBytes(3).toString('hex');
-  return `${prefix.toUpperCase()}-${Date.now().toString().slice(-6)}-${rnd}`;
+  return `${prefix}-${Date.now().toString().slice(-6)}-${rnd}`;
 }
 
-/**
- * Crea conglomerado manual + si options.autoCreateSubparcelas true -> crea las 5 subparcelas IFN
- * (cada SPF contendrá las subparcelas anidadas: fustales_grandes, fustales, latizales, brinzales)
- */
+// =========================================================
+// 🧱 CREAR CONGLOMERADO MANUAL
+// =========================================================
 async function crearConglomeradoManual(data, options = { autoCreateSubparcelas: true }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     const codigo = data.codigo || generarCodigo('CONG');
-    const ubicacion = data.ubicacion; // json {lat,lng,municipio?,departamento?}
+    const ubicacion = data.ubicacion;
     const estado = data.estado || 'pendiente';
 
-    const insertCong = `INSERT INTO conglomerado (codigo, ubicacion, estado, fecha_inicio)
-                        VALUES ($1, $2::jsonb, $3, CURRENT_DATE) RETURNING *`;
+    console.log(`📦 Creando conglomerado manualmente → ${codigo}`);
+    console.log(`📍 Ubicación: ${ubicacion.lat}, ${ubicacion.lng} (${ubicacion.region})`);
+
+    const insertCong = `
+      INSERT INTO conglomerado (codigo, ubicacion, estado, fecha_inicio)
+      VALUES ($1, $2::jsonb, $3, CURRENT_DATE)
+      RETURNING *;
+    `;
     const { rows } = await client.query(insertCong, [codigo, JSON.stringify(ubicacion), estado]);
     const cong = rows[0];
 
     let createdSubparcelas = [];
     if (options.autoCreateSubparcelas) {
-      createdSubparcelas = await _crearSubparcelasIfn(client, cong.id_conglomerado, ubicacion.lat, ubicacion.lng);
+      console.log('🌳 Generando subparcelas IFN...');
+      createdSubparcelas = await _crearSubparcelasIFN(client, cong.id_conglomerado, ubicacion.lat, ubicacion.lng);
     }
 
     await client.query('COMMIT');
+    console.log(`✅ Conglomerado creado exitosamente: ${codigo}`);
     return { conglomerado: cong, subparcelas: createdSubparcelas };
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error('❌ Error al crear conglomerado manual:', err.message);
     throw err;
   } finally {
     client.release();
   }
 }
 
-/**
- * crearConglomeradosAutomatico: crea N conglomerados dentro de bbox o región simple
- * params: { cantidad, bbox: {minLat,maxLat,minLng,maxLng}, region(optional), distancia_subparcelas_m (default 80) }
- */
+// =========================================================
+// 🤖 CREAR CONGLOMERADOS AUTOMÁTICAMENTE
+// =========================================================
 async function crearConglomeradosAutomatico(params = {}) {
-  const { cantidad = 1, bbox } = params;
+  const { cantidad = 1, region = null } = params;
+
   if (!cantidad || typeof cantidad !== 'number' || cantidad <= 0) {
-    throw new Error('cantidad debe ser numero > 0');
+    throw new Error('❗ La cantidad debe ser un número mayor que 0');
   }
-  const usedBbox = bbox || { minLat: -4.8, maxLat: 13.5, minLng: -79.0, maxLng: -66.8 }; // Colombia approx
-  const created = [];
+
+  console.log(`🚀 Generando ${cantidad} conglomerado(s) automáticamente...`);
+  if (region) console.log(`📍 Región objetivo: ${region}`);
+
+  const creados = [];
   for (let i = 0; i < cantidad; i++) {
-    const lat = usedBbox.minLat + Math.random() * (usedBbox.maxLat - usedBbox.minLat);
-    const lng = usedBbox.minLng + Math.random() * (usedBbox.maxLng - usedBbox.minLng);
-    const result = await crearConglomeradoManual({ codigo: generarCodigo('CONG'), ubicacion: { lat, lng } }, { autoCreateSubparcelas: true });
-    created.push(result);
+    const ubicacion = generarCoordenada(region);
+    const codigo = generarCodigo('CONG');
+    console.log(`📦 Creando conglomerado #${i + 1}: ${codigo}`);
+    const resultado = await crearConglomeradoManual(
+      { codigo, ubicacion },
+      { autoCreateSubparcelas: true }
+    );
+    creados.push(resultado);
   }
-  return created;
+
+  console.log(`✅ ${creados.length} conglomerado(s) creados correctamente`);
+  return creados;
 }
 
-/**
- * Interna: crear las 5 subparcelas IFN (centro + 4 cardinales)
- * Distancia entre centros = 80m por defecto; para cada SPF se crean las subparcelas:
- *  - fustales_grandes (15 m)
- *  - fustales (7 m)
- *  - latizales (3 m)
- *  - brinzales (1.5 m)
- *
- * Devuelve array con los registros insertados.
- */
-async function _crearSubparcelasIfn(client, id_conglomerado, centroLat, centroLng, distancia = 80) {
-  // radios por categoría (m)
+// =========================================================
+// 🌲 CREAR SUBPARCELAS (IFN)
+// =========================================================
+async function _crearSubparcelasIFN(client, id_conglomerado, centroLat, centroLng, distancia = 80) {
+  console.log(`📍 Generando subparcelas para conglomerado ${id_conglomerado}`);
+
   const radios = [
     { categoria: 'fustales_grandes', radio: 15.0 },
     { categoria: 'fustales', radio: 7.0 },
@@ -101,37 +119,36 @@ async function _crearSubparcelasIfn(client, id_conglomerado, centroLat, centroLn
     { categoria: 'brinzales', radio: 1.5 }
   ];
 
-  // SPF list: centro + N,E,S,W
+  // SPF: Subparcelas principales alrededor del centro
   const spfList = [
     { code: 'SPF-1', lat: centroLat, lng: centroLng },
-    { code: 'SPF-2', ...destinationPoint(centroLat, centroLng, distancia, 0) },   // North (0°)
-    { code: 'SPF-3', ...destinationPoint(centroLat, centroLng, distancia, 180) }, // South (180°)
-    { code: 'SPF-4', ...destinationPoint(centroLat, centroLng, distancia, 90) },  // East (90°)
-    { code: 'SPF-5', ...destinationPoint(centroLat, centroLng, distancia, 270) }  // West (270°)
+    { code: 'SPF-2', ...destinationPoint(centroLat, centroLng, distancia, 0) },
+    { code: 'SPF-3', ...destinationPoint(centroLat, centroLng, distancia, 180) },
+    { code: 'SPF-4', ...destinationPoint(centroLat, centroLng, distancia, 90) },
+    { code: 'SPF-5', ...destinationPoint(centroLat, centroLng, distancia, 270) }
   ];
 
   const inserted = [];
-
-  // Prepared INSERT string: incluimos centro_lat, centro_lon, centro_lng por compatibilidad con tu esquema
-  const insertSubSql = `
+  const insertSQL = `
     INSERT INTO subparcela (id_conglomerado, categoria, radio, area, centro_lat, centro_lon, centro_lng)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *;
   `;
 
   for (const spf of spfList) {
+    console.log(`🧭 Creando subparcelas en ${spf.code}...`);
     for (const r of radios) {
-      const area = parseFloat((Math.PI * Math.pow(r.radio, 2)).toFixed(2)); // redondear a 2 decimales
-      const vals = [
+      const area = parseFloat((Math.PI * Math.pow(r.radio, 2)).toFixed(2));
+      const values = [
         id_conglomerado,
         r.categoria,
         r.radio,
         area,
         spf.lat,
-        spf.lng, // centro_lon
-        spf.lng  // centro_lng (duplicado por compatibilidad si tenés ambas columnas)
+        spf.lng,
+        spf.lng
       ];
-      const { rows } = await client.query(insertSubSql, vals);
+      const { rows } = await client.query(insertSQL, values);
       inserted.push({
         spf: spf.code,
         categoria: r.categoria,
@@ -140,22 +157,38 @@ async function _crearSubparcelasIfn(client, id_conglomerado, centroLat, centroLn
     }
   }
 
+  console.log(`🌱 Total de subparcelas creadas: ${inserted.length}`);
   return inserted;
 }
 
+// =========================================================
+// 📋 LISTAR Y OBTENER CONGLOMERADOS
+// =========================================================
 async function listarConglomerados() {
-  const { rows } = await pool.query('SELECT * FROM listar_conglomerados()'); // function SQL en DB
+  console.log('📋 Listando todos los conglomerados registrados...');
+  const { rows } = await pool.query('SELECT * FROM listar_conglomerados()');
+  console.log(`✅ ${rows.length} conglomerado(s) encontrados.`);
   return rows;
 }
 
 async function obtenerConglomeradoPorId(id) {
+  console.log(`🔍 Buscando conglomerado con ID: ${id}`);
   const { rows } = await pool.query('SELECT * FROM conglomerado WHERE id_conglomerado = $1', [id]);
-  if (rows.length === 0) return null;
+
+  if (rows.length === 0) {
+    console.warn('⚠️ Conglomerado no encontrado.');
+    return null;
+  }
+
   const cong = rows[0];
   const subs = await pool.query('SELECT * FROM listar_subparcelas_por_conglomerado($1)', [id]);
+  console.log(`✅ Conglomerado encontrado con ${subs.rows.length} subparcelas asociadas.`);
   return { conglomerado: cong, subparcelas: subs.rows };
 }
 
+// =========================================================
+// 📦 EXPORTAR FUNCIONES
+// =========================================================
 module.exports = {
   crearConglomeradoManual,
   crearConglomeradosAutomatico,
