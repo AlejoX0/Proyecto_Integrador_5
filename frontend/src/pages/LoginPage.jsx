@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { MdOutlineEmail } from "react-icons/md";
 import { RiLockPasswordLine } from "react-icons/ri";
 import { FaFacebook, FaApple, FaGoogle } from "react-icons/fa";
-import LoginImage from "../assets/login-image.jpg";
+import LoginImage from "../assets/image-login.jpg"; // ✅ Nombre corregido
 
 const LoginPage = () => {
   return (
@@ -33,7 +33,13 @@ const LoginPage = () => {
             </Link>
           </p>
 
-          <form className="space-y-6">
+          <form
+            className="space-y-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              console.log("Intentando iniciar sesión...");
+            }}
+          >
             <div className="relative">
               <MdOutlineEmail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input

@@ -3,14 +3,14 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
 
-// Importa tu página de login
-import LoginPage from './pages/LoginPage';
+// Importamos la página de Login
+import LoginPage from './pages/LoginPage.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        {/* Ruta de prueba para el Login */}
+        {/* Ruta para mostrar la página de Login */}
         <Route path="/login" element={<LoginPage />} />
       </Routes>
     </BrowserRouter>
