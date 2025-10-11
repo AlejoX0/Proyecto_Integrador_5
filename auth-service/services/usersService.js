@@ -1,5 +1,5 @@
 // ====================================================
-// SERVICIO DE USUARIOS (Sincronización entre Mongo y Postgres)
+// SERVICIO DE USUARIOS (Sincronización entre Mongo y Postgres - Compatible con Neon)
 // ====================================================
 
 const { Pool } = require("pg");
@@ -9,15 +9,13 @@ require("dotenv").config();
 // 🔗 CONEXIÓN A POSTGRES (Neon / Base relacional)
 // ====================================================
 const pool = new Pool({
-  connectionString: process.env.POSTGRES_URI,
-  ssl: { rejectUnauthorized: false }, // requerido para Neon
+  connectionString: process.env.DATABASE_URL, // usar DATABASE_URL de Neon
+  ssl: { rejectUnauthorized: false },        // requerido para Neon
 });
 
 // ====================================================
 // 🔄 SINCRONIZAR USUARIO ENTRE MONGO Y POSTGRES
 // ====================================================
-// Se ejecuta cuando un usuario se registra en Mongo (auth-service).
-// Guarda el usuario también en Postgres mediante una función almacenada.
 async function sincronizarUsuario(usuario) {
   try {
     const {
@@ -28,20 +26,40 @@ async function sincronizarUsuario(usuario) {
       correo,
       telefono,
       rol,
+      password,
     } = usuario;
 
     console.log("🔄 Ejecutando sincronización de usuario en Postgres...");
+    console.log("Datos a sincronizar:", usuario);
 
-    // Llamada a la función SQL en Postgres (por ejemplo: crear_usuario_desde_mongo)
-    await pool.query(
-      "SELECT crear_usuario_desde_mongo($1, $2, $3, $4, $5, $6, $7)",
-      [_id.toString(), nro_documento, nombre, apellido, correo, telefono, rol]
-    );
+    const query = `
+      INSERT INTO usuario (id_usuario, id_mongo, nombre, apellido, correo, telefono, contrasena, rol)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (id_mongo)
+      DO UPDATE SET
+        nombre = EXCLUDED.nombre,
+        apellido = EXCLUDED.apellido,
+        correo = EXCLUDED.correo,
+        telefono = EXCLUDED.telefono,
+        contrasena = EXCLUDED.contrasena,
+        rol = EXCLUDED.rol;
+    `;
+
+    await pool.query(query, [
+      parseInt(nro_documento),
+      _id.toString(),
+      nombre,
+      apellido,
+      correo,
+      telefono || null,
+      password || null,
+      rol,
+    ]);
 
     console.log("✅ Usuario sincronizado correctamente en Postgres");
     return { message: "✅ Usuario sincronizado correctamente en Postgres" };
   } catch (error) {
-    console.error("❌ Error al sincronizar usuario en Postgres:", error.message);
+    console.error("❌ Error al sincronizar usuario en Postgres:", error);
     throw new Error("Error al sincronizar usuario en Postgres");
   }
 }
@@ -49,22 +67,21 @@ async function sincronizarUsuario(usuario) {
 // ====================================================
 // 🧩 CONSULTAR USUARIO DESDE POSTGRES
 // ====================================================
-// Otros microservicios (brigadas, muestra, etc.) pueden obtener los datos
 async function obtenerUsuarioPorIdMongo(idMongo) {
   try {
     const { rows } = await pool.query(
-      "SELECT * FROM obtener_usuario_por_id_mongo($1)",
+      "SELECT * FROM usuario WHERE id_mongo = $1",
       [idMongo]
     );
     return rows[0] || null;
   } catch (error) {
-    console.error("❌ Error al obtener usuario desde Postgres:", error.message);
+    console.error("❌ Error al obtener usuario desde Postgres:", error);
     throw error;
   }
 }
 
 // ====================================================
-// 🚀 OPCIONAL: ACTUALIZAR DATOS DE USUARIO (si se modifican en Mongo)
+// 🚀 ACTUALIZAR DATOS DE USUARIO (si se modifican en Mongo)
 // ====================================================
 async function actualizarUsuario(usuario) {
   try {
@@ -76,16 +93,33 @@ async function actualizarUsuario(usuario) {
       correo,
       telefono,
       rol,
+      password,
     } = usuario;
 
-    await pool.query(
-      "SELECT actualizar_usuario_desde_mongo($1, $2, $3, $4, $5, $6, $7)",
-      [_id.toString(), nro_documento, nombre, apellido, correo, telefono, rol]
-    );
+    const query = `
+      UPDATE usuario SET
+        nombre = $1,
+        apellido = $2,
+        correo = $3,
+        telefono = $4,
+        contrasena = $5,
+        rol = $6
+      WHERE id_mongo = $7;
+    `;
+
+    await pool.query(query, [
+      nombre,
+      apellido,
+      correo,
+      telefono || null,
+      password || null,
+      rol,
+      _id.toString(),
+    ]);
 
     console.log("♻️ Usuario actualizado correctamente en Postgres");
   } catch (error) {
-    console.error("❌ Error al actualizar usuario en Postgres:", error.message);
+    console.error("❌ Error al actualizar usuario en Postgres:", error);
     throw error;
   }
 }

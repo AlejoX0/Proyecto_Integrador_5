@@ -1,28 +1,23 @@
-// ============================================
-// RUTAS: Brigadas
-// ============================================
-
+// routes/brigadasRoutes.js
 const express = require("express");
 const router = express.Router();
-
 const {
   crearBrigada,
   listarBrigadas,
   asignarConglomerado,
 } = require("../controllers/brigadasController");
+const { verificarToken, verificarRolAdmin } = require("../middleware/auth");
 
-const { verificarToken } = require("../middleware/auth");
-
-// 🔐 Middleware de autenticación
+// 🔐 Todas las rutas requieren autenticación
 router.use(verificarToken);
 
-// CU1 - Crear brigada
-router.post("/", crearBrigada);
+// Crear brigada (solo admin)
+router.post("/", verificarRolAdmin(), crearBrigada);
 
-// CU2 - Listar brigadas
+// Listar brigadas (admin ve todas, usuarios normales solo su propia brigada)
 router.get("/", listarBrigadas);
 
-// CU3 - Asignar conglomerado a brigada
-router.put("/:id_brigada/conglomerado", asignarConglomerado);
+// Asignar conglomerado a brigada (solo admin)
+router.put("/:id_brigada/conglomerado", verificarRolAdmin(), asignarConglomerado);
 
 module.exports = router;

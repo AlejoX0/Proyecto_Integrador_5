@@ -2,6 +2,10 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+/**
+ * Middleware para verificar que el token JWT enviado en Authorization sea válido.
+ * Agrega la información del usuario a req.user si es válido.
+ */
 function verificarToken(req, res, next) {
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   if (!authHeader) return res.status(401).json({ error: 'Token requerido' });
@@ -13,20 +17,29 @@ function verificarToken(req, res, next) {
 
   const token = parts[1];
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'brigadas_secret_key_IFN_2025');
-    req.user = payload; // ej. { id_usuario, nombre, rol }
+    // ⚠️ Usar la misma clave secreta que auth-service
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = payload; // ej. { id, rol, correo }
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token inválido' });
   }
 }
 
-function verificarRol(rolesPermitidos = []) {
+/**
+ * Middleware para verificar que el usuario tenga el rol de administrador.
+ */
+function verificarRolAdmin() {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'No autenticado' });
-    if (!rolesPermitidos.includes(req.user.rol)) return res.status(403).json({ error: 'Acceso denegado' });
+
+    // Comparación en minúsculas para evitar problemas de mayúsculas
+    if (req.user.rol.toLowerCase() !== 'administrador') {
+      return res.status(403).json({ error: 'Acceso denegado' });
+    }
+
     next();
   };
 }
 
-module.exports = { verificarToken, verificarRol };
+module.exports = { verificarToken, verificarRolAdmin };

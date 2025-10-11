@@ -21,16 +21,33 @@ export const asignarUsuarioABrigada = async (req, res) => {
 };
 
 // CU5 - Listar integrantes de brigada
+// CU5 - Listar integrantes de brigada
 export const listarIntegrantesDeBrigada = async (req, res) => {
   try {
     const { id_brigada } = req.params;
-    const integrantes = await UsuarioBrigadaService.listarIntegrantes(id_brigada);
+    const { id, rol } = req.user; // ID del usuario logueado y rol
+
+    let integrantes;
+
+    if (rol.toLowerCase() === "administrador") {
+      // Admin puede ver cualquier brigada
+      integrantes = await UsuarioBrigadaService.listarIntegrantes(id_brigada);
+    } else {
+      // Usuario normal: solo si pertenece a la brigada
+      const pertenece = await UsuarioBrigadaService.verificarUsuarioEnBrigada(id, id_brigada);
+      if (!pertenece) {
+        return res.status(403).json({ error: "Acceso denegado: no perteneces a esta brigada" });
+      }
+      integrantes = await UsuarioBrigadaService.listarIntegrantes(id_brigada);
+    }
+
     res.json(integrantes);
   } catch (error) {
     console.error("❌ Error en listarIntegrantesDeBrigada:", error);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 // CU6 - Eliminar usuario de brigada
 export const eliminarUsuarioDeBrigada = async (req, res) => {

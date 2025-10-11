@@ -1,5 +1,5 @@
 // ====================================================
-// SERVICIO DE USUARIO - BRIGADA
+// SERVICIO DE USUARIO - BRIGADA (con requery)
 // ====================================================
 
 const pool = require("../db/postgres");
@@ -16,8 +16,20 @@ async function asignarUsuarioABrigada(id_usuario, id_brigada, rol_en_brigada) {
 
 // 👥 CU5 - Listar usuarios en brigada
 async function listarIntegrantes(id_brigada) {
-  const { rows } = await pool.query("SELECT * FROM listar_usuarios_de_brigada($1)", [id_brigada]);
+  const { rows } = await pool.query(
+    "SELECT * FROM listar_usuarios_de_brigada($1)",
+    [id_brigada]
+  );
   return rows;
+}
+
+// 🔍 Verificar si un usuario pertenece a una brigada
+async function verificarUsuarioEnBrigada(id_usuario, id_brigada) {
+  const { rows } = await pool.query(
+    "SELECT 1 FROM usuario_brigada WHERE id_usuario = $1 AND id_brigada = $2",
+    [id_usuario, id_brigada]
+  );
+  return rows.length > 0;
 }
 
 // ❌ CU6 - Eliminar usuario de brigada
@@ -30,4 +42,5 @@ module.exports = {
   asignarUsuarioABrigada,
   listarIntegrantes,
   eliminarUsuarioDeBrigada,
+  verificarUsuarioEnBrigada,
 };

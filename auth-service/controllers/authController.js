@@ -11,67 +11,12 @@ const { sincronizarUsuario } = require("../services/usersService");
 const JWT_SECRET = process.env.JWT_SECRET || "proyectoIntegrador5";
 
 // ====================================================
-// 🚨 CU0 - Crear primer administrador (solo una vez)
-// ====================================================
-async function crearPrimerAdmin(req, res) {
-  try {
-    const { nombre, apellido, correo, nro_documento, telefono, password } = req.body;
-
-    // Verificar si ya hay un administrador creado
-    const existeAdmin = await Usuario.findOne({ rol: "administrador" });
-    if (existeAdmin) {
-      return res.status(400).json({ error: "Ya existe un administrador registrado." });
-    }
-
-    // Validar campos
-    if (!nombre || !apellido || !correo || !nro_documento || !password) {
-      return res.status(400).json({ error: "Faltan campos obligatorios." });
-    }
-
-    // Encriptar contraseña
-    const hashed = await bcrypt.hash(password, 10);
-
-    // Crear usuario administrador
-    const nuevoAdmin = new Usuario({
-      nombre,
-      apellido,
-      correo,
-      nro_documento,
-      telefono,
-      password: hashed,
-      rol: "administrador",
-    });
-
-    await nuevoAdmin.save();
-
-    // Sincronizar con PostgreSQL
-    await sincronizarUsuario(nuevoAdmin);
-
-    res.status(201).json({
-      mensaje: "✅ Administrador creado exitosamente",
-      admin: {
-        id: nuevoAdmin._id,
-        nombre: nuevoAdmin.nombre,
-        correo: nuevoAdmin.correo,
-        rol: nuevoAdmin.rol,
-      },
-    });
-  } catch (error) {
-    console.error("❌ Error al crear el administrador:", error.message);
-    res.status(500).json({ error: "Error interno del servidor" });
-  }
-}
-
-// ====================================================
 // 👤 CU1 - Registrar usuario (solo administrador)
 // ====================================================
 async function registrarUsuario(req, res) {
   try {
-    // 🛡️ Verificar rol administrador
     if (!req.user || req.user.rol !== "administrador") {
-      return res
-        .status(403)
-        .json({ error: "Acceso denegado: solo el administrador puede registrar usuarios" });
+      return res.status(403).json({ error: "Acceso denegado: solo el administrador puede registrar usuarios" });
     }
 
     const { nro_documento, nombre, apellido, correo, telefono, password, rol } = req.body;
@@ -80,16 +25,11 @@ async function registrarUsuario(req, res) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
-    // 📋 Verificar si ya existe
-    const existe = await Usuario.findOne({
-      $or: [{ correo }, { nro_documento }],
-    });
+    const existe = await Usuario.findOne({ $or: [{ correo }, { nro_documento }] });
     if (existe) return res.status(400).json({ error: "El usuario ya está registrado" });
 
-    // 🔑 Encriptar contraseña
     const hashed = await bcrypt.hash(password, 10);
 
-    // 🧩 Crear usuario en MongoDB
     const nuevoUsuario = new Usuario({
       nro_documento,
       nombre,
@@ -101,8 +41,6 @@ async function registrarUsuario(req, res) {
     });
 
     await nuevoUsuario.save();
-
-    // 🔁 Sincronizar con PostgreSQL (brigadas-service)
     await sincronizarUsuario(nuevoUsuario);
 
     res.json({
@@ -128,22 +66,18 @@ async function loginUsuario(req, res) {
   try {
     const { correo, password } = req.body;
 
-    // 🔍 Buscar usuario en Mongo
     const usuario = await Usuario.findOne({ correo });
     if (!usuario) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    // 🔑 Verificar contraseña
     const esValido = await bcrypt.compare(password, usuario.password);
     if (!esValido) return res.status(401).json({ error: "Contraseña incorrecta" });
 
-    // 🎟️ Generar token JWT
     const token = jwt.sign(
       { id: usuario._id, rol: usuario.rol, correo: usuario.correo },
       JWT_SECRET,
       { expiresIn: "4h" }
     );
 
-    // 💾 Guardar sesión
     await Session.create({ userId: usuario._id, token });
 
     res.json({
@@ -164,10 +98,47 @@ async function loginUsuario(req, res) {
 }
 
 // ====================================================
-// EXPORTAR FUNCIONES
+// 🚨 CREAR PRIMER ADMINISTRADOR (ruta temporal)
 // ====================================================
-module.exports = {
-  crearPrimerAdmin,
-  registrarUsuario,
-  loginUsuario,
-};
+async function crearPrimerAdmin(req, res) {
+  try {
+    const { nombre, apellido, correo, nro_documento, telefono, password } = req.body;
+
+    if (!nombre || !apellido || !correo || !nro_documento || !password) {
+      return res.status(400).json({ error: "Faltan campos obligatorios." });
+    }
+
+    const existeAdmin = await Usuario.findOne({ rol: "administrador" });
+    if (existeAdmin) {
+      return res.status(400).json({ error: "Ya existe un administrador registrado." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const nuevoAdmin = new Usuario({
+      nombre,
+      apellido,
+      correo,
+      nro_documento,
+      telefono,
+      password: hashedPassword,
+      rol: "administrador",
+    });
+
+    await nuevoAdmin.save();
+
+    res.status(201).json({
+      mensaje: "✅ Administrador creado exitosamente",
+      admin: {
+        nombre: nuevoAdmin.nombre,
+        correo: nuevoAdmin.correo,
+        rol: nuevoAdmin.rol,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error al crear el administrador:", error.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+module.exports = { registrarUsuario, loginUsuario, crearPrimerAdmin };
