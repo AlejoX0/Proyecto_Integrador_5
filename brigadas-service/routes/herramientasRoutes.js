@@ -9,19 +9,19 @@ const {
 } = require("../controllers/herramientasController");
 const { verificarToken, verificarRolAdmin } = require("../middleware/auth");
 
-// 🔐 Middleware de autenticación
+// 🔐 Middleware global de autenticación
 router.use(verificarToken);
 
 // CU7 - Crear herramienta (solo admin)
 router.post("/", verificarRolAdmin(), crearHerramienta);
 
-// CU9 - Listar herramientas (cualquier usuario autenticado)
+// CU9 - Listar herramientas (todos los usuarios autenticados)
 router.get("/", listarHerramientas);
 
-// CU8 - Registrar uso de herramienta (cualquier usuario autenticado)
+// CU8 - Registrar uso de herramienta (brigadistas o jefes)
 router.post("/uso", registrarUso);
 
-// CU9 - Consultar uso de herramientas por brigada (cualquier usuario autenticado)
+// CU9 - Consultar uso de herramientas por brigada
 router.get("/uso/:id_brigada", obtenerUso);
 
 module.exports = router;

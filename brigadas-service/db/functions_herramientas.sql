@@ -2,77 +2,88 @@
 -- FUNCIONES DE GESTIÓN Y USO DE HERRAMIENTAS
 -- ===============================================
 
--- 🔹 Caso de uso: Crear herramienta
+-- 🔹 Crear herramienta
 CREATE OR REPLACE FUNCTION crear_herramienta(
   p_nombre TEXT,
-  p_tipo TEXT,
   p_descripcion TEXT,
-  p_cantidad_disponible INT
+  p_cantidad_disponible INT DEFAULT 0
 ) RETURNS JSON AS $$
 DECLARE
   nueva JSON;
 BEGIN
-  INSERT INTO herramientas (nombre, tipo, descripcion, cantidad_disponible)
-  VALUES (p_nombre, p_tipo, p_descripcion, p_cantidad_disponible)
-  RETURNING row_to_json(herramientas.*) INTO nueva;
+  INSERT INTO herramienta(nombre, descripcion, cantidad_disponible)
+  VALUES (p_nombre, p_descripcion, COALESCE(p_cantidad_disponible, 0))
+  RETURNING row_to_json(herramienta.*) INTO nueva;
+
   RETURN nueva;
 END;
 $$ LANGUAGE plpgsql;
 
--- 🔹 Caso de uso: Obtener todas las herramientas
+
+-- 🔹 Obtener todas las herramientas
 CREATE OR REPLACE FUNCTION obtener_herramientas()
 RETURNS TABLE(
   id_herramienta INT,
   nombre TEXT,
-  tipo TEXT,
   descripcion TEXT,
   cantidad_disponible INT
 ) AS $$
 BEGIN
   RETURN QUERY
-  SELECT h.id_herramienta, h.nombre, h.tipo, h.descripcion, h.cantidad_disponible
-  FROM herramientas h
+  SELECT h.id_herramienta, h.nombre, h.descripcion, h.cantidad_disponible
+  FROM herramienta h
   ORDER BY h.id_herramienta;
 END;
 $$ LANGUAGE plpgsql;
 
--- 🔹 Caso de uso: Registrar uso de herramienta
+
+-- 🔹 Registrar uso de herramienta
 CREATE OR REPLACE FUNCTION registrar_uso_herramienta(
   p_id_herramienta INT,
-  p_id_usuario INT,
   p_id_brigada INT,
-  p_cantidad_usada INT
+  p_estado TEXT DEFAULT 'activo'
 ) RETURNS JSON AS $$
 DECLARE
   nuevo_uso JSON;
 BEGIN
-  INSERT INTO uso_herramientas (id_herramienta, id_usuario, id_brigada, cantidad_usada, fecha_uso)
-  VALUES (p_id_herramienta, p_id_usuario, p_id_brigada, p_cantidad_usada, NOW())
-  RETURNING row_to_json(uso_herramientas.*) INTO nuevo_uso;
+  -- Verificar existencia de herramienta
+  IF NOT EXISTS (SELECT 1 FROM herramienta WHERE id_herramienta = p_id_herramienta) THEN
+    RAISE EXCEPTION 'La herramienta con ID % no existe', p_id_herramienta;
+  END IF;
 
-  UPDATE herramientas
-  SET cantidad_disponible = cantidad_disponible - p_cantidad_usada
+  -- Registrar uso
+  INSERT INTO uso_herramienta (id_brigada, id_herramienta, fecha_uso, estado)
+  VALUES (p_id_brigada, p_id_herramienta, CURRENT_DATE, p_estado)
+  RETURNING row_to_json(uso_herramienta.*) INTO nuevo_uso;
+
+  -- Disminuir cantidad disponible
+  UPDATE herramienta
+  SET cantidad_disponible = GREATEST(cantidad_disponible - 1, 0)
   WHERE id_herramienta = p_id_herramienta;
 
   RETURN nuevo_uso;
 END;
 $$ LANGUAGE plpgsql;
 
--- 🔹 Caso de uso: Obtener uso de herramientas por brigada
+
+-- 🔹 Obtener uso de herramientas por brigada
 CREATE OR REPLACE FUNCTION obtener_uso_por_brigada(p_id_brigada INT)
 RETURNS TABLE(
-  id_uso INT,
+  id_brigada INT,
   id_herramienta INT,
   nombre_herramienta TEXT,
-  id_usuario INT,
-  cantidad_usada INT,
-  fecha_uso TIMESTAMP
+  fecha_uso DATE,
+  estado TEXT
 ) AS $$
 BEGIN
   RETURN QUERY
-  SELECT u.id_uso, u.id_herramienta, h.nombre, u.id_usuario, u.cantidad_usada, u.fecha_uso
-  FROM uso_herramientas u
-  JOIN herramientas h ON u.id_herramienta = h.id_herramienta
+  SELECT u.id_brigada,
+         u.id_herramienta,
+         h.nombre AS nombre_herramienta,
+         u.fecha_uso,
+         u.estado
+  FROM uso_herramienta u
+  JOIN herramienta h ON u.id_herramienta = h.id_herramienta
   WHERE u.id_brigada = p_id_brigada
   ORDER BY u.fecha_uso DESC;
 END;
