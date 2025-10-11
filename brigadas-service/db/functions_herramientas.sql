@@ -12,7 +12,7 @@ DECLARE
   nueva JSON;
 BEGIN
   INSERT INTO herramienta(nombre, descripcion, cantidad_disponible)
-  VALUES (p_nombre, p_descripcion, COALESCE(p_cantidad_disponible, 0))
+  VALUES (p_nombre, p_descripcion, p_cantidad_disponible)
   RETURNING row_to_json(herramienta.*) INTO nueva;
 
   RETURN nueva;
