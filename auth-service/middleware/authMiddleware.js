@@ -1,32 +1,55 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+// ====================================================
+// MIDDLEWARE DE AUTENTICACIÓN Y AUTORIZACIÓN
+// ====================================================
 
-const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-  if (!authHeader) return res.status(401).json({ error: 'Token requerido' });
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-  const [bearer, token] = authHeader.split(' ');
-  if (bearer !== 'Bearer' || !token) return res.status(400).json({ error: 'Formato de token inválido' });
-
+// ====================================================
+// 🔐 Verificar Token JWT
+// ====================================================
+const verificarToken = async (req, res, next) => {
   try {
+    const authHeader = req.headers["authorization"] || req.headers["Authorization"];
+    if (!authHeader) {
+      return res.status(401).json({ error: "Token requerido" });
+    }
+
+    const [bearer, token] = authHeader.split(" ");
+    if (bearer !== "Bearer" || !token) {
+      return res.status(400).json({ error: "Formato de token inválido" });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
 
     req.user = user;
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Token inválido o expirado' });
+    console.error("❌ Error en verificarToken:", err.message);
+    return res.status(401).json({ error: "Token inválido o expirado" });
   }
 };
 
-const verifyRole = (...rolesPermitidos) => {
+// ====================================================
+// 🧩 Verificar Rol (autorización por rol)
+// ====================================================
+const verificarRol = (rolesPermitidos = []) => {
   return (req, res, next) => {
-    if (!req.user) return res.status(401).json({ error: 'Usuario no autenticado' });
-    if (!rolesPermitidos.includes(req.user.rol))
-      return res.status(403).json({ error: 'Acceso denegado para este rol' });
+    if (!req.user) {
+      return res.status(401).json({ error: "Usuario no autenticado" });
+    }
+
+    if (!rolesPermitidos.includes(req.user.rol)) {
+      return res.status(403).json({ error: "Acceso denegado para este rol" });
+    }
+
     next();
   };
 };
 
-module.exports = { verifyToken, verifyRole };
+module.exports = { verificarToken, verificarRol };

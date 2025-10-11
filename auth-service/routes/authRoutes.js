@@ -4,10 +4,17 @@
 
 const express = require("express");
 const router = express.Router();
-const { registrarUsuario, loginUsuario } = require("../controllers/authController");
+
+// Importar controladores
+const { crearPrimerAdmin, registrarUsuario, loginUsuario } = require("../controllers/authController");
+
+// Importar middlewares
 const { verificarToken, verificarRol } = require("../middleware/authMiddleware");
 
-// 👤 Solo el administrador puede registrar usuarios
+// 🚨 Crear primer administrador (solo se usa 1 vez)
+router.post("/setup-admin", crearPrimerAdmin);
+
+// 👤 Solo el administrador puede registrar nuevos usuarios
 router.post("/register", verificarToken, verificarRol(["administrador"]), registrarUsuario);
 
 // 🔐 Todos los usuarios pueden iniciar sesión

@@ -11,6 +11,58 @@ const { sincronizarUsuario } = require("../services/usersService");
 const JWT_SECRET = process.env.JWT_SECRET || "proyectoIntegrador5";
 
 // ====================================================
+// 🚨 CU0 - Crear primer administrador (solo una vez)
+// ====================================================
+async function crearPrimerAdmin(req, res) {
+  try {
+    const { nombre, apellido, correo, nro_documento, telefono, password } = req.body;
+
+    // Verificar si ya hay un administrador creado
+    const existeAdmin = await Usuario.findOne({ rol: "administrador" });
+    if (existeAdmin) {
+      return res.status(400).json({ error: "Ya existe un administrador registrado." });
+    }
+
+    // Validar campos
+    if (!nombre || !apellido || !correo || !nro_documento || !password) {
+      return res.status(400).json({ error: "Faltan campos obligatorios." });
+    }
+
+    // Encriptar contraseña
+    const hashed = await bcrypt.hash(password, 10);
+
+    // Crear usuario administrador
+    const nuevoAdmin = new Usuario({
+      nombre,
+      apellido,
+      correo,
+      nro_documento,
+      telefono,
+      password: hashed,
+      rol: "administrador",
+    });
+
+    await nuevoAdmin.save();
+
+    // Sincronizar con PostgreSQL
+    await sincronizarUsuario(nuevoAdmin);
+
+    res.status(201).json({
+      mensaje: "✅ Administrador creado exitosamente",
+      admin: {
+        id: nuevoAdmin._id,
+        nombre: nuevoAdmin.nombre,
+        correo: nuevoAdmin.correo,
+        rol: nuevoAdmin.rol,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error al crear el administrador:", error.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+// ====================================================
 // 👤 CU1 - Registrar usuario (solo administrador)
 // ====================================================
 async function registrarUsuario(req, res) {
@@ -111,4 +163,11 @@ async function loginUsuario(req, res) {
   }
 }
 
-module.exports = { registrarUsuario, loginUsuario };
+// ====================================================
+// EXPORTAR FUNCIONES
+// ====================================================
+module.exports = {
+  crearPrimerAdmin,
+  registrarUsuario,
+  loginUsuario,
+};
