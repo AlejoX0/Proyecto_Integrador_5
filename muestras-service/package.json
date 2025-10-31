@@ -1,0 +1,20 @@
+{
+  "name": "muestras-service",
+  "version": "1.0.0",
+  "description": "Microservicio para manejo de muestras (botánicas, suelo y detrito) del IFN",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "express": "^4.19.2",
+    "pg": "^8.11.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
