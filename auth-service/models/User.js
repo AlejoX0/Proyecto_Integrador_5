@@ -17,7 +17,8 @@ const UserSchema = new mongoose.Schema({
       'jefe de brigada'
     ],
     default: 'auxiliar de campo'
-  }
+  },
+  departamento: { type: String } // 👈 Nuevo campo agregado
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

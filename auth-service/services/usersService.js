@@ -27,14 +27,15 @@ async function sincronizarUsuario(usuario) {
       telefono,
       rol,
       password,
+      departamento, // 👈 Nuevo campo
     } = usuario;
 
     console.log("🔄 Ejecutando sincronización de usuario en Postgres...");
     console.log("Datos a sincronizar:", usuario);
 
     const query = `
-      INSERT INTO usuario (id_usuario, id_mongo, nombre, apellido, correo, telefono, contrasena, rol)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO usuario (id_usuario, id_mongo, nombre, apellido, correo, telefono, contrasena, rol, departamento)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (id_mongo)
       DO UPDATE SET
         nombre = EXCLUDED.nombre,
@@ -42,7 +43,8 @@ async function sincronizarUsuario(usuario) {
         correo = EXCLUDED.correo,
         telefono = EXCLUDED.telefono,
         contrasena = EXCLUDED.contrasena,
-        rol = EXCLUDED.rol;
+        rol = EXCLUDED.rol,
+        departamento = EXCLUDED.departamento;
     `;
 
     await pool.query(query, [
@@ -54,6 +56,7 @@ async function sincronizarUsuario(usuario) {
       telefono || null,
       password || null,
       rol,
+      departamento || null,
     ]);
 
     console.log("✅ Usuario sincronizado correctamente en Postgres");
@@ -94,6 +97,7 @@ async function actualizarUsuario(usuario) {
       telefono,
       rol,
       password,
+      departamento, // 👈 Nuevo campo
     } = usuario;
 
     const query = `
@@ -103,8 +107,9 @@ async function actualizarUsuario(usuario) {
         correo = $3,
         telefono = $4,
         contrasena = $5,
-        rol = $6
-      WHERE id_mongo = $7;
+        rol = $6,
+        departamento = $7
+      WHERE id_mongo = $8;
     `;
 
     await pool.query(query, [
@@ -114,6 +119,7 @@ async function actualizarUsuario(usuario) {
       telefono || null,
       password || null,
       rol,
+      departamento || null,
       _id.toString(),
     ]);
 

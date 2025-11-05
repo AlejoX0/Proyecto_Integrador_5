@@ -6,12 +6,13 @@ CREATE OR REPLACE FUNCTION sincronizar_usuario_desde_mongo(
   p_correo TEXT,
   p_telefono TEXT,
   p_contrasena TEXT,
-  p_rol TEXT
+  p_rol TEXT,
+  p_departamento TEXT -- 👈 Nuevo parámetro
 )
 RETURNS VOID AS $$
 BEGIN
-  INSERT INTO usuario (id_usuario, id_mongo, nombre, apellido, correo, telefono, contrasena, rol)
-  VALUES (p_nro_documento, p_id_mongo, p_nombre, p_apellido, p_correo, p_telefono, p_contrasena, p_rol)
+  INSERT INTO usuario (id_usuario, id_mongo, nombre, apellido, correo, telefono, contrasena, rol, departamento)
+  VALUES (p_nro_documento, p_id_mongo, p_nombre, p_apellido, p_correo, p_telefono, p_contrasena, p_rol, p_departamento)
   ON CONFLICT (id_mongo)
   DO UPDATE SET
     nombre = EXCLUDED.nombre,
@@ -19,6 +20,7 @@ BEGIN
     correo = EXCLUDED.correo,
     telefono = EXCLUDED.telefono,
     contrasena = EXCLUDED.contrasena,
-    rol = EXCLUDED.rol;
+    rol = EXCLUDED.rol,
+    departamento = EXCLUDED.departamento; -- 👈 Nuevo campo sincronizado
 END;
 $$ LANGUAGE plpgsql;

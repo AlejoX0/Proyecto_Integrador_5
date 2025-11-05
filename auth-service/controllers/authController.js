@@ -19,7 +19,7 @@ async function registrarUsuario(req, res) {
       return res.status(403).json({ error: "Acceso denegado: solo el administrador puede registrar usuarios" });
     }
 
-    const { nro_documento, nombre, apellido, correo, telefono, password, rol } = req.body;
+    const { nro_documento, nombre, apellido, correo, telefono, password, rol, departamento } = req.body;
 
     if (!nro_documento || !nombre || !apellido || !correo || !password) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
@@ -38,6 +38,7 @@ async function registrarUsuario(req, res) {
       telefono,
       password: hashed,
       rol: rol || "auxiliar de campo",
+      departamento, // 👈 Nuevo campo agregado
     });
 
     await nuevoUsuario.save();
@@ -51,6 +52,7 @@ async function registrarUsuario(req, res) {
         apellido: nuevoUsuario.apellido,
         correo: nuevoUsuario.correo,
         rol: nuevoUsuario.rol,
+        departamento: nuevoUsuario.departamento, // 👈 Opcional, si quieres devolverlo
       },
     });
   } catch (err) {
@@ -58,6 +60,7 @@ async function registrarUsuario(req, res) {
     res.status(500).json({ error: "Error en el servidor" });
   }
 }
+
 
 // ====================================================
 // 🔐 CU2 - Login de usuario (todos los roles)
