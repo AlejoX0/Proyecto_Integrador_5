@@ -19,7 +19,7 @@ const app = express();
 // Middlewares
 app.use(express.json());
 app.use(cors());
-
+app.use(express.json({ strict: false }));
 // Rutas principales
 app.use("/api/auth", authRoutes);
 
