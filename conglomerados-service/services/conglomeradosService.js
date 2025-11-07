@@ -173,18 +173,29 @@ async function listarConglomerados() {
 
 async function obtenerConglomeradoPorId(id) {
   console.log(`🔍 Buscando conglomerado con ID: ${id}`);
-  const { rows } = await pool.query('SELECT * FROM conglomerado WHERE id_conglomerado = $1', [id]);
 
-  if (rows.length === 0) {
-    console.warn('⚠️ Conglomerado no encontrado.');
-    return null;
-  }
+  // ✅ Usar función SQL que ya funciona
+  const { rows } = await pool.query(
+    'SELECT * FROM obtener_conglomerado_por_id($1)',
+    [id]
+  );
+
+  if (rows.length === 0) return null;
 
   const cong = rows[0];
-  const subs = await pool.query('SELECT * FROM listar_subparcelas_por_conglomerado($1)', [id]);
-  console.log(`✅ Conglomerado encontrado con ${subs.rows.length} subparcelas asociadas.`);
-  return { conglomerado: cong, subparcelas: subs.rows };
+
+  const subs = await pool.query(
+    'SELECT * FROM listar_subparcelas_por_conglomerado($1)',
+    [id]
+  );
+
+  return {
+    conglomerado: cong, 
+    subparcelas: subs.rows
+  };
 }
+
+
 
 // =========================================================
 // 📦 EXPORTAR FUNCIONES

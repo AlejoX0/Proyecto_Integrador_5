@@ -3,7 +3,13 @@ const pool = require('../db/postgres');
 
 
 async function listarSubparcelasPorConglomerado(id_conglomerado) {
-  const { rows } = await pool.query('SELECT * FROM listar_subparcelas_por_conglomerado($1)', [id_conglomerado]);
+  const id = Number(id_conglomerado); // ✅ normalizar
+
+  const { rows } = await pool.query(
+    'SELECT * FROM listar_subparcelas_por_conglomerado($1::int)', 
+    [id]
+  );
+
   return rows;
 }
 
