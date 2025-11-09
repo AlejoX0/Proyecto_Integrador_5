@@ -7,24 +7,16 @@ const { verificarToken, verificarRolAdmin } = require('../middleware/auth');
 // Todas las rutas requieren autenticación
 router.use(verificarToken);
 
-// POST manual (solo administrador)
-router.post('/', verificarRolAdmin(), ctrl.crearManual);
-
-// POST automático (solo administrador)
-router.post('/auto', verificarRolAdmin(), ctrl.crearAuto);
-
-// GET listar (cualquier usuario autenticado)
+// ✅ Listar todos los conglomerados (GET /api/conglomerados)
 router.get('/', ctrl.listar);
 
-// GET detalle (roles permitidos: administrador, jefe, botanico, coinvestigador)
-router.get('/:id', (req, res, next) => {
-  const rolesPermitidos = ['administrador', 'jefe', 'botanico', 'coinvestigador'];
-  if (!req.user) return res.status(401).json({ error: 'No autenticado' });
+// ✅ Obtener detalle por ID (GET /api/conglomerados/:id)
+router.get('/:id', ctrl.detalle);
 
-  if (!rolesPermitidos.includes(req.user.rol.toLowerCase())) {
-    return res.status(403).json({ error: 'Acceso denegado' });
-  }
-  next();
-}, ctrl.detalle);
+// ✅ Crear manual (solo admin)
+router.post('/manual', verificarRolAdmin(), ctrl.crearManual);
+
+// ✅ Crear automático (solo admin)
+router.post('/auto', verificarRolAdmin(), ctrl.crearAuto);
 
 module.exports = router;

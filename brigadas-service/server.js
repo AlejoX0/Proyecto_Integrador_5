@@ -1,46 +1,78 @@
 // ====================================================
-// SERVIDOR PRINCIPAL - brigadas-service
+// SERVICIO DE BRIGADAS - Acceso a PostgreSQL (Neon)
 // ====================================================
 
-const express = require("express");
-const dotenv = require("dotenv");
-const cors = require("cors");
-const pool = require("./db/postgres");
-const { verificarToken } = require("./middleware/auth"); // ✅ Importamos solo la función necesaria
-
-// Rutas
-const brigadasRoutes = require("./routes/brigadasRoutes");
-const herramientasRoutes = require("./routes/herramientasRoutes");
-const usuarioBrigadaRoutes = require("./routes/usuarioBrigadaRoutes");
-
-// Configuración
-dotenv.config();
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-// Verifica conexión a la base de datos
-pool.connect()
-  .then(() => console.log("✅ Conexión establecida con PostgreSQL (Neon)."))
-  .catch((err) => console.error("❌ Error de conexión:", err.message));
-
-// Ruta de prueba
-app.get("/", (req, res) => {
-  res.send("🚀 API de Brigadas funcionando correctamente");
-});
+import pool from "../db/postgres.js";
 
 // ====================================================
-// RUTAS PROTEGIDAS CON JWT
+// 🔹 Crear una brigada
 // ====================================================
-app.use("/api/brigadas", verificarToken, brigadasRoutes);
-app.use("/api/herramientas", verificarToken, herramientasRoutes);
-app.use("/api/usuarios-brigadas", verificarToken, usuarioBrigadaRoutes);
+export const crearBrigada = async (departamento, fecha_asignacion, id_conglomerado, lider) => {
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO brigadas (departamento, fecha_asignacion, id_conglomerado, lider)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *;
+      `,
+      [departamento, fecha_asignacion, id_conglomerado || null, lider]
+    );
+
+    return result.rows[0];
+  } catch (error) {
+    console.error("❌ Error al crear brigada:", error.message);
+    throw new Error("Error al crear brigada en la base de datos");
+  }
+};
 
 // ====================================================
-// PUERTO DE ESCUCHA
+// 🔹 Asignar conglomerado a brigada
 // ====================================================
-const PORT = process.env.PORT || 4001;
-app.listen(PORT, () => {
-  console.log(`🔥 Servidor corriendo en http://localhost:${PORT}`);
-});
+export const asignarConglomerado = async (id_brigada, id_conglomerado) => {
+  try {
+    const result = await pool.query(
+      `
+      UPDATE brigadas
+      SET id_conglomerado = $1
+      WHERE id_brigada = $2
+      RETURNING *;
+      `,
+      [id_conglomerado, id_brigada]
+    );
+
+    if (result.rowCount === 0) {
+      throw new Error("No se encontró la brigada especificada");
+    }
+
+    return result.rows[0];
+  } catch (error) {
+    console.error("❌ Error al asignar conglomerado:", error.message);
+    throw new Error("Error al asignar conglomerado a la brigada");
+  }
+};
+
+// ====================================================
+// 🔹 Listar brigadas (para administrador y jefes)
+// ====================================================
+export const listarBrigadas = async () => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        b.id_brigada,
+        b.nombre,
+        b.departamento,
+        b.fecha_asignacion AS fecha_creacion,
+        b.id_conglomerado,
+        u.nombre || ' ' || u.apellido AS jefe
+      FROM brigadas b
+      LEFT JOIN usuarios u ON b.lider = u.id_usuario
+      ORDER BY b.id_brigada ASC;
+    `);
+
+    console.log(`📋 ${result.rowCount} brigada(s) encontradas.`);
+    return result.rows;
+  } catch (error) {
+    console.error("❌ Error al listar brigadas:", error.message);
+    throw new Error("Error interno al listar brigadas");
+  }
+};
