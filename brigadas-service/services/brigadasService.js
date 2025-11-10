@@ -2,12 +2,15 @@
 // SERVICIO DE BRIGADAS - Acceso a la base de datos
 // ====================================================
 
-import pool from "../db/postgres.js";
+// Corregido: Se usa 'require' y la ruta '../' (para subir de 'services' a 'db')
+const pool = require("../db/postgres.js");
 
 // ====================================================
 // 🔹 Crear una nueva brigada
 // ====================================================
-export const crearBrigada = async (departamento, fecha_asignacion, id_conglomerado, lider) => {
+
+// Corregido: Se quita 'export'
+const crearBrigada = async (departamento, fecha_asignacion, id_conglomerado, lider) => {
   try {
     const query = `
       INSERT INTO brigada (departamento, fecha_asignacion, id_conglomerado, lider)
@@ -27,7 +30,9 @@ export const crearBrigada = async (departamento, fecha_asignacion, id_conglomera
 // ====================================================
 // 🔹 Asignar un conglomerado a una brigada
 // ====================================================
-export const asignarConglomerado = async (id_brigada, id_conglomerado) => {
+
+// Corregido: Se quita 'export'
+const asignarConglomerado = async (id_brigada, id_conglomerado) => {
   try {
     const query = `
       UPDATE brigada
@@ -54,7 +59,9 @@ export const asignarConglomerado = async (id_brigada, id_conglomerado) => {
 // ====================================================
 // 🔹 Listar todas las brigadas (solo para administrador)
 // ====================================================
-export const listarBrigadas = async () => {
+
+// Corregido: Se quita 'export'
+const listarBrigadas = async () => {
   try {
     const query = `
       SELECT 
@@ -63,9 +70,10 @@ export const listarBrigadas = async () => {
         b.fecha_asignacion,
         b.id_conglomerado,
         b.lider,
-        u.nombre AS nombre_lider
+        u.nombre AS nombre_lider,
+        u.apellido AS apellido_lider
       FROM brigada b
-      LEFT JOIN usuario u ON CAST(u.nro_documento AS TEXT) = CAST(b.lider AS TEXT)
+      LEFT JOIN usuario u ON u.id_usuario = b.lider
       ORDER BY b.id_brigada ASC;
     `;
     const { rows } = await pool.query(query);
@@ -80,7 +88,9 @@ export const listarBrigadas = async () => {
 // ====================================================
 // 🔹 Listar brigadas asignadas a un líder específico
 // ====================================================
-export const listarBrigadasPorLider = async (liderId) => {
+
+// Corregido: Se quita 'export'
+const listarBrigadasPorLider = async (liderId) => {
   try {
     const query = `
       SELECT 
@@ -89,10 +99,11 @@ export const listarBrigadasPorLider = async (liderId) => {
         b.fecha_asignacion,
         b.id_conglomerado,
         b.lider,
-        u.nombre AS nombre_lider
+        u.nombre AS nombre_lider,
+        u.apellido AS apellido_lider
       FROM brigada b
-      LEFT JOIN usuario u ON CAST(u.nro_documento AS TEXT) = CAST(b.lider AS TEXT)
-      WHERE CAST(b.lider AS TEXT) = $1
+      LEFT JOIN usuario u ON u.id_usuario = b.lider
+      WHERE b.lider = $1
       ORDER BY b.id_brigada ASC;
     `;
     const { rows } = await pool.query(query, [liderId]);
@@ -102,4 +113,12 @@ export const listarBrigadasPorLider = async (liderId) => {
     console.error("❌ Error en listarBrigadasPorLider:", error.message);
     throw error;
   }
+};
+
+// Corregido: Se añade 'module.exports' al final
+module.exports = {
+  crearBrigada,
+  asignarConglomerado,
+  listarBrigadas,
+  listarBrigadasPorLider,
 };

@@ -1,12 +1,16 @@
 // ====================================================
 // CONTROLADOR DE BRIGADAS
 // ====================================================
-import * as BrigadaService from "../services/brigadasService.js";
+
+// Corregido: Se usa 'require'
+const BrigadaService = require("../services/brigadasService.js");
 
 // ====================================================
 // 🔹 Crear una brigada (solo administrador)
 // ====================================================
-export const crearBrigada = async (req, res) => {
+
+// Corregido: Se quita 'export'
+const crearBrigada = async (req, res) => {
   try {
     // Validar campos requeridos
     const { departamento, fecha_asignacion, id_conglomerado, lider } = req.body;
@@ -35,7 +39,9 @@ export const crearBrigada = async (req, res) => {
 // ====================================================
 // 🔹 Asignar conglomerado a una brigada existente
 // ====================================================
-export const asignarConglomerado = async (req, res) => {
+
+// Corregido: Se quita 'export'
+const asignarConglomerado = async (req, res) => {
   try {
     const { id_brigada } = req.params;
     const { id_conglomerado } = req.body;
@@ -66,7 +72,9 @@ export const asignarConglomerado = async (req, res) => {
 // ====================================================
 // 🔹 Listar brigadas (admin ve todas, jefes ven las suyas)
 // ====================================================
-export const listarBrigadas = async (req, res) => {
+
+// Corregido: Se quita 'export'
+const listarBrigadas = async (req, res) => {
   try {
     // Verificamos rol (admin ve todas)
     const rol = req.user?.rol || "desconocido";
@@ -89,4 +97,11 @@ export const listarBrigadas = async (req, res) => {
     console.error("❌ Error al listar brigadas:", error);
     res.status(500).json({ error: "Error interno al listar brigadas" });
   }
+};
+
+// Corregido: Se añade 'module.exports' al final
+module.exports = {
+  crearBrigada,
+  asignarConglomerado,
+  listarBrigadas,
 };

@@ -2,12 +2,53 @@
 // SERVICIO DE BRIGADAS - Acceso a PostgreSQL (Neon)
 // ====================================================
 
-import pool from "../db/postgres.js";
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+
+dotenv.config();
+
+// Conexión a BD (inicializa pool y autocarga funciones SQL)
+require("./db/postgres");
+
+// Rutas
+const brigadasRoutes = require("./routes/brigadasRoutes");
+const herramientasRoutes = require("./routes/herramientasRoutes");
+const usuarioBrigadaRoutes = require("./routes/usuarioBrigadaRoutes");
+
+// App
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Healthcheck simple para monitoreo
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", service: "brigadas-service" });
+});
+
+// Montar rutas con prefijo
+app.use("/api/brigadas", brigadasRoutes);
+app.use("/api/herramientas", herramientasRoutes);
+app.use("/api/usuario-brigada", usuarioBrigadaRoutes);
+
+// Manejadores globales de errores no controlados para evitar caída del proceso
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+});
+
+const PORT = process.env.PORT || 3002;
+app.listen(PORT, () => {
+  console.log(`🚀 Brigadas-Service escuchando en puerto ${PORT}`);
+});
 
 // ====================================================
 // 🔹 Crear una brigada
 // ====================================================
-export const crearBrigada = async (departamento, fecha_asignacion, id_conglomerado, lider) => {
+const crearBrigada = async (departamento, fecha_asignacion, id_conglomerado, lider) => {
   try {
     const result = await pool.query(
       `
@@ -28,7 +69,7 @@ export const crearBrigada = async (departamento, fecha_asignacion, id_conglomera
 // ====================================================
 // 🔹 Asignar conglomerado a brigada
 // ====================================================
-export const asignarConglomerado = async (id_brigada, id_conglomerado) => {
+const asignarConglomerado = async (id_brigada, id_conglomerado) => {
   try {
     const result = await pool.query(
       `
@@ -52,9 +93,9 @@ export const asignarConglomerado = async (id_brigada, id_conglomerado) => {
 };
 
 // ====================================================
-// 🔹 Listar brigadas (para administrador y jefes)
+// 🔹 Listar brigadas
 // ====================================================
-export const listarBrigadas = async () => {
+const listarBrigadas = async () => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -75,4 +116,10 @@ export const listarBrigadas = async () => {
     console.error("❌ Error al listar brigadas:", error.message);
     throw new Error("Error interno al listar brigadas");
   }
+};
+
+module.exports = {
+  crearBrigada,
+  asignarConglomerado,
+  listarBrigadas
 };
