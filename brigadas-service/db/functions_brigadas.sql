@@ -17,10 +17,9 @@ RETURNS VOID AS $$
 DECLARE
     v_dep_lider VARCHAR;
     v_region_conglomerado VARCHAR;
+    v_id_brigada INT;
 BEGIN
-    -- =======================================
-    -- 1️⃣ Validar que el líder no esté ya asignado a otra brigada
-    -- =======================================
+    -- 1️⃣ Validar líder disponible
     IF EXISTS (
         SELECT 1 FROM brigada
         WHERE lider = p_lider
@@ -29,9 +28,7 @@ BEGIN
             'El líder con ID % ya está asignado a otra brigada.', p_lider;
     END IF;
 
-    -- =======================================
     -- 2️⃣ Obtener departamento del líder
-    -- =======================================
     SELECT departamento INTO v_dep_lider
     FROM usuario
     WHERE id_usuario = p_lider;
@@ -40,9 +37,7 @@ BEGIN
         RAISE EXCEPTION 'El líder con ID % no existe.', p_lider;
     END IF;
 
-    -- =======================================
     -- 3️⃣ Obtener región del conglomerado
-    -- =======================================
     SELECT ubicacion->>'region' INTO v_region_conglomerado
     FROM conglomerado
     WHERE id_conglomerado = p_id_conglomerado;
@@ -53,9 +48,7 @@ BEGIN
             p_id_conglomerado;
     END IF;
 
-    -- =======================================
-    -- 4️⃣ Validar coincidencia de los 3 departamentos
-    -- =======================================
+    -- 4️⃣ Validar coincidencias
     IF v_region_conglomerado <> v_dep_lider
         OR v_region_conglomerado <> p_departamento THEN
 
@@ -64,28 +57,28 @@ BEGIN
             v_dep_lider, p_departamento, v_region_conglomerado;
     END IF;
 
-    -- =======================================
-    -- 5️⃣ Crear la brigada
-    -- =======================================
+    -- 5️⃣ Crear brigada
     INSERT INTO brigada (departamento, fecha_asignacion, id_conglomerado, lider)
-    VALUES (p_departamento, p_fecha_asignacion, p_id_conglomerado, p_lider);
+    VALUES (p_departamento, p_fecha_asignacion, p_id_conglomerado, p_lider)
+    RETURNING id_brigada INTO v_id_brigada;
 
-    -- =======================================
     -- 6️⃣ Actualizar estado del líder
-    -- =======================================
     UPDATE usuario
     SET estado = 'asignado'
     WHERE id_usuario = p_lider;
 
-    -- =======================================
     -- 7️⃣ Actualizar estado del conglomerado
-    -- =======================================
     UPDATE conglomerado
     SET estado = 'en proceso'
     WHERE id_conglomerado = p_id_conglomerado;
 
+  
+    INSERT INTO brigada_usuario (id_brigada, id_usuario, rol_en_brigada, fecha_inicio)
+    VALUES (v_id_brigada, p_lider, 'jefe de brigada', CURRENT_DATE);
+
 END;
 $$ LANGUAGE plpgsql;
+
 
 
 CREATE OR REPLACE FUNCTION asignar_conglomerado_a_brigada(
