@@ -18,7 +18,7 @@ const UserSchema = new mongoose.Schema({
     ],
     default: 'auxiliar de campo'
   },
-  departamento: { type: String } // 👈 Nuevo campo agregado
+  departamento: { type: String } 
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);
